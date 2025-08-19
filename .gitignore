@@ -1,0 +1,31 @@
+# Build artifacts
+build/
+*.o
+*.so
+
+# Python cache and temporary files
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE/editor settings
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary output
+*.log
+
+# Emscripten SDK
+emsdk/
+
+# WebAssembly build outputs 
+dist/*
+!dist/pcg32_wasm.js
+!dist/pcg32_wasm.wasm
+
+# Allow result files (e.g., test outputs)
+# NOTE: Do not ignore .txt files so that bigcrush_results.txt is included

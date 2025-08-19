@@ -11,6 +11,7 @@ Designed with readability and auditability in mind, it is ideal for learning, re
 - ✅ Based on the **PCG32** algorithm: simple, fast, and statistically sound
 - 🧠 Implemented in **C++**
 - 🧩 Python bindings using **`ctypes`**
+- 🌐 WebAssembly build for direct usage in JavaScript / Web projects
 - 📈 Visual distribution plots (`matplotlib`)
 - 📊 Full access to:
   - `uint32` values
@@ -28,6 +29,9 @@ Designed with readability and auditability in mind, it is ideal for learning, re
 libpcg_rng/
 ├── bindings/              # Python bindings to the C++ shared library
 │   └── pcg.py
+├── dist/                  # WebAssembly build output
+│   ├── pcg32_wasm.js
+│   └── pcg32_wasm.wasm
 ├── build/                 # (empty) used as build output dir for .so
 ├── src/                   # Core C++ RNG implementation
 │   ├── pcg_rng.cpp
@@ -50,6 +54,7 @@ Make sure you’re on **Linux** or **WSL**. This repo builds a shared library us
 - `g++`
 - `python3`
 - `matplotlib` (for histogram plotting)
+- *(Optional, for WebAssembly)*: [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
 
 ### 1. Build the shared library
 
@@ -73,6 +78,49 @@ python3 tests/test_hist.py
 ```
 
 ---
+
+### 🔹 WebAssembly build
+
+The `dist/` folder already contains a **precompiled WebAssembly build**:
+
+- `pcg32_wasm.js` (JavaScript loader)  
+- `pcg32_wasm.wasm` (compiled WebAssembly module)  
+
+You can import and use it directly in a web project:
+
+```html
+<script type="module">
+  import initWasm from './dist/pcg32_wasm.js';
+
+  const run = async () => {
+    const wasm = await initWasm();
+    console.log("Random uint32:", wasm.pcg32_random());
+  };
+
+  run();
+</script>
+```
+
+---
+
+#### 🔨 Build manually (optional)
+
+If you want to rebuild the WASM module yourself:
+
+```bash
+# Clone and activate Emscripten if not already installed
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+./emsdk install latest
+./emsdk activate latest
+source ./emsdk_env.sh
+
+# From libpcg_rng root
+emcc src/pcg_rng.cpp -o dist/pcg32_wasm.js   -s MODULARIZE=1 -s EXPORT_NAME="initWasm"   -s EXPORTED_FUNCTIONS="['_pcg32_random']"   -s ENVIRONMENT=web
+```
+
+---
+
 
 ## ✅ Proven Randomness: BigCrush Results
 
