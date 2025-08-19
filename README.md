@@ -29,9 +29,9 @@ Designed with readability and auditability in mind, it is ideal for learning, re
 libpcg_rng/
 ├── bindings/              # Python bindings to the C++ shared library
 │   └── pcg.py
-├── dist/                  # WebAssembly build output
-│   ├── pcg32_wasm.js
-│   └── pcg32_wasm.wasm
+├── web/dist/                  # WebAssembly build output
+│   ├── pcg_rng.js
+│   └── pcg_rng.wasm
 ├── build/                 # (empty) used as build output dir for .so
 ├── src/                   # Core C++ RNG implementation
 │   ├── pcg_rng.cpp
@@ -81,24 +81,34 @@ python3 tests/test_hist.py
 
 ### 🔹 WebAssembly build
 
-The `dist/` folder already contains a **precompiled WebAssembly build**:
+The `web/dist/` folder already contains a **precompiled WebAssembly build**:
 
-- `pcg32_wasm.js` (JavaScript loader)  
-- `pcg32_wasm.wasm` (compiled WebAssembly module)  
+- `pcg_rng.js` (JavaScript loader)  
+- `pcg_rng.wasm` (compiled WebAssembly module)  
 
 You can import and use it directly in a web project:
 
 ```html
 <script type="module">
-  import initWasm from './dist/pcg32_wasm.js';
+  import initWasm from './web/dist/pcg_rng.js';
 
   const run = async () => {
     const wasm = await initWasm();
-    console.log("Random uint32:", wasm.pcg32_random());
+
+    // Wrap exported functions
+    const pcg32 = wasm.cwrap('pcg32', 'number', []);
+    const setSeed = wasm.cwrap('set_seed', null, ['number']);
+
+    // Initialize seed
+    setSeed(Date.now());
+
+    // Generate a random number
+    console.log("Random uint32:", pcg32());
   };
 
   run();
 </script>
+
 ```
 
 ---
@@ -115,8 +125,31 @@ cd emsdk
 ./emsdk activate latest
 source ./emsdk_env.sh
 
-# From libpcg_rng root
-emcc src/pcg_rng.cpp -o dist/pcg32_wasm.js   -s MODULARIZE=1 -s EXPORT_NAME="initWasm"   -s EXPORTED_FUNCTIONS="['_pcg32_random']"   -s ENVIRONMENT=web
+# IMPORTANT: before building, always load the Emscripten environment
+source ./emsdk_env.sh
+
+# Build WebAssembly module
+mkdir -p web/dist
+emcc src/pcg_rng.cpp -O3 -s WASM=1 -s STRICT=1 \
+  -s ALLOW_MEMORY_GROWTH=1 \
+  -s MODULARIZE=1 \
+  -s EXPORT_ES6=1 \
+  -s ENVIRONMENT=web \
+  -s EXPORTED_RUNTIME_METHODS='["cwrap"]' \
+  -s EXPORTED_FUNCTIONS='[
+    "_set_seed",
+    "_reset_rng",
+    "_get_state",
+    "_set_state",
+    "_pcg32",
+    "_pcg_normalized",
+    "_pcg_between",
+    "_pcg_between_u32",
+    "_pcg_between_float",
+    "_pcg_bool"
+  ]' \
+  -o web/dist/pcg_rng.js
+
 ```
 
 ---
@@ -132,7 +165,7 @@ The implementation has successfully passed the full **BigCrush** battery from Te
 
 ## 🧠 Notes
 
-- This is a stateless wrapper by default, but state management (`get_state`, `set_state`) is exposed for advanced usage.
+- The generator maintains internal state, with full access via get_state and set_state.
 - Currently built and tested on **Linux (Ubuntu)**.
 - Windows compatibility is not guaranteed (but can likely be adapted via MSVC or MinGW).
 
